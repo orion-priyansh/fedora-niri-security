@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fedora + Niri :: Bug Bounty & Cyber Setup</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #080c10;
+    --surface: #0d1117;
+    --border: #1e2a36;
+    --accent: #00e5ff;
+    --accent2: #7c3aed;
+    --accent3: #22d3ee;
+    --green: #10b981;
+    --yellow: #fbbf24;
+    --red: #f43f5e;
+    --text: #c9d1d9;
+    --muted: #6e7681;
+    --heading: #e6edf3;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content:'';
+    position:fixed; inset:0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,229,255,0.015) 2px, rgba(0,229,255,0.015) 4px);
+    pointer-events:none; z-index:1000;
+  }
+
+  /* Animated grid bg */
+  body::after {
+    content:'';
+    position:fixed; inset:0;
+    background-image: linear-gradient(rgba(0,229,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,255,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events:none; z-index:0;
+    animation: gridPulse 8s ease-in-out infinite;
+  }
+
+  @keyframes gridPulse { 0%,100%{opacity:.5} 50%{opacity:1} }
+
+  .container { max-width: 960px; margin: 0 auto; padding: 0 24px; position:relative; z-index:1; }
+
+  /* Header */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 32px 0 24px;
+    margin-bottom: 40px;
+  }
+
+  .header-badge {
+    display: inline-flex; align-items:center; gap:8px;
+    background: rgba(0,229,255,0.08);
+    border: 1px solid rgba(0,229,255,0.2);
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(28px, 5vw, 48px);
+    font-weight: 800;
+    color: var(--heading);
+    line-height: 1.1;
+    letter-spacing: -1px;
+  }
+
+  h1 span { color: var(--accent); }
+
+  .header-sub {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 10px;
+  }
+
+  .header-sub em { color: var(--green); font-style:normal; }
+
+  /* TOC */
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 40px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 6px 24px;
+  }
+
+  .toc-title {
+    grid-column: 1/-1;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+
+  .toc a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 13px;
+    padding: 2px 0;
+    transition: color .2s;
+    display: flex; align-items:center; gap: 8px;
+  }
+
+  .toc a::before { content:'›'; color: var(--accent); font-size:16px; }
+  .toc a:hover { color: var(--accent); }
+
+  /* Sections */
+  .section {
+    margin-bottom: 48px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .section-header {
+    background: linear-gradient(90deg, rgba(0,229,255,0.06), transparent);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex; align-items:center; gap:12px;
+  }
+
+  .section-num {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    background: rgba(0,229,255,0.1);
+    border: 1px solid rgba(0,229,255,0.2);
+    padding: 2px 8px;
+    border-radius: 3px;
+  }
+
+  .section-header h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--heading);
+  }
+
+  .section-body { padding: 24px; }
+
+  /* Step cards */
+  .step {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+
+  .step-title {
+    padding: 10px 16px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    color: var(--heading);
+    font-size: 13px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items:center; gap: 8px;
+  }
+
+  .step-title .dot {
+    width:6px; height:6px; border-radius:50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent);
+    flex-shrink:0;
+  }
+
+  .step-body { padding: 12px 16px; }
+
+  /* Code blocks */
+  pre, code {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+  }
+
+  pre {
+    background: #060a0d;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    margin: 10px 0;
+    position: relative;
+  }
+
+  pre .comment { color: var(--muted); }
+  pre .cmd { color: var(--accent3); }
+  pre .arg { color: var(--yellow); }
+  pre .out { color: var(--green); }
+  pre .warn { color: var(--red); }
+  pre .path { color: #c084fc; }
+
+  code {
+    background: rgba(0,229,255,0.08);
+    border: 1px solid rgba(0,229,255,0.15);
+    border-radius: 3px;
+    padding: 1px 6px;
+    color: var(--accent);
+    font-size: 11.5px;
+  }
+
+  /* Warning / info / tip boxes */
+  .callout {
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin: 12px 0;
+    font-size: 13px;
+    display: flex; gap: 10px;
+  }
+
+  .callout-icon { font-size: 16px; flex-shrink:0; margin-top:1px; }
+
+  .callout.warn { background: rgba(251,191,36,0.06); border: 1px solid rgba(251,191,36,0.2); color: #fde68a; }
+  .callout.info { background: rgba(0,229,255,0.05); border: 1px solid rgba(0,229,255,0.15); color: var(--accent3); }
+  .callout.danger { background: rgba(244,63,94,0.06); border: 1px solid rgba(244,63,94,0.2); color: #fda4af; }
+  .callout.success { background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.2); color: #6ee7b7; }
+
+  /* Tool grid */
+  .tool-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+    margin: 12px 0;
+  }
+
+  .tool-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+    transition: border-color .2s, background .2s;
+  }
+
+  .tool-card:hover {
+    border-color: rgba(0,229,255,0.3);
+    background: rgba(0,229,255,0.03);
+  }
+
+  .tool-name {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+
+  .tool-desc {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .tool-tag {
+    display: inline-block;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-top: 6px;
+  }
+
+  .tag-bounty { background: rgba(124,58,237,0.15); color: #c4b5fd; border: 1px solid rgba(124,58,237,0.3); }
+  .tag-ai { background: rgba(0,229,255,0.08); color: var(--accent); border: 1px solid rgba(0,229,255,0.2); }
+  .tag-blockchain { background: rgba(251,191,36,0.08); color: var(--yellow); border: 1px solid rgba(251,191,36,0.2); }
+  .tag-recon { background: rgba(16,185,129,0.08); color: var(--green); border: 1px solid rgba(16,185,129,0.2); }
+  .tag-exploit { background: rgba(244,63,94,0.08); color: var(--red); border: 1px solid rgba(244,63,94,0.2); }
+
+  /* Text styles */
+  p { margin-bottom: 10px; font-size: 13px; }
+  ul { padding-left: 20px; margin: 8px 0; }
+  li { margin-bottom: 4px; font-size: 13px; }
+  strong { color: var(--heading); font-weight: 500; }
+
+  /* Dividers */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 20px 0;
+  }
+
+  /* Niri config preview */
+  .config-block {
+    background: #060a0d;
+    border: 1px solid rgba(124,58,237,0.3);
+    border-radius: 6px;
+    padding: 16px;
+    margin: 10px 0;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    line-height: 1.8;
+    overflow-x: auto;
+  }
+
+  .cfg-key { color: #c084fc; }
+  .cfg-val { color: var(--green); }
+  .cfg-comment { color: var(--muted); }
+  .cfg-section { color: var(--accent); font-weight: bold; }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 32px 0;
+    text-align: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  footer span { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="header-badge">⬡ SETUP GUIDE v2.0</div>
+    <h1>Fedora + <span>Niri</span><br>Security Workstation</h1>
+    <p class="header-sub">Dual Boot Windows 11 · Bug Bounty · <em>AI/Blockchain Security</em> · Research</p>
+  </header>
+
+  <!-- TOC -->
+  <nav class="toc">
+    <div class="toc-title">// Table of Contents</div>
+    <a href="#s1">Pre-Install Prep</a>
+    <a href="#s2">Fedora Installation</a>
+    <a href="#s3">Niri WM Setup</a>
+    <a href="#s4">Core System Config</a>
+    <a href="#s5">Bug Bounty Toolkit</a>
+    <a href="#s6">AI Security Tools</a>
+    <a href="#s7">Blockchain Security</a>
+    <a href="#s8">Privacy & OPSEC</a>
+    <a href="#s9">Niri Keybinds</a>
+  </nav>
+
+  <!-- SECTION 1 -->
+  <section class="section" id="s1">
+    <div class="section-header">
+      <span class="section-num">01</span>
+      <h2>Pre-Installation Preparation</h2>
+    </div>
+    <div class="section-body">
+
+      <div class="callout danger">
+        <span class="callout-icon">⚠</span>
+        <div><strong>Back up Windows first.</strong> Use Windows Backup or clone your drive. Dual boot partitioning carries risk of data loss if done incorrectly.</div>
+      </div>
+
+      <div class="step">
+        <div class="step-title"><span class="dot"></span>Windows 11 — Disable Fast Startup & Secure Boot</div>
+        <div class="step-body">
+          <p>Fast Startup causes filesystem lock issues on shared partitions. Secure Boot may block Fedora's bootloader (though Fedora supports it — disable if problems arise).</p>
+          <pre><span class="comment"># In Windows PowerShell (Admin):</span>
+<span class="cmd">powercfg</span> <span class="arg">/h off</span>            <span class="comment"># Disable hibernation / fast startup</span>
+
+<span class="comment"># Then: Settings → System → Recovery → Advanced Startup
+# → UEFI Firmware Settings → Disable Secure Boot (if needed)</span></pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-title"><span class="dot"></span>Shrink Windows Partition</div>
+        <div class="step-body">
+          <p>Allocate at least <strong>80–120 GB</strong> for Fedora (more if storing VMs, datasets, or blockchain nodes).</p>
+          <pre><span class="comment"># Windows → Disk Management → Right-click C: → Shrink Volume
+# Recommended layout:</span>
+<span class="out">  EFI    →  512 MB  (already exists, shared)
+  Windows →  keep existing
+  [FREE] →  100–200 GB  (for Fedora)</span></pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-title"><span class="dot"></span>Create Fedora Bootable USB</div>
+        <div class="step-body">
+          <pre><span class="comment"># Download Fedora Workstation 40+ (or KDE spin) ISO
+# https://fedoraproject.org/workstation/download/</span>
+
+<span class="comment"># Flash with Fedora Media Writer (Windows) or on Linux:</span>
+<span class="cmd">sudo dd</span> <span class="arg">if=Fedora-Workstation-Live.iso of=/dev/sdX bs=4M status=progress</span></pre>
+        </div>
+      </div>
+
+      <div class="callout info">
+        <span class="callout-icon">ℹ</span>
+        <div>Boot the USB in <strong>UEFI mode</strong> (not legacy/BIOS). Check your firmware boot menu — usually F12, F10, or Del at startup.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 2 -->
+  <section class="section" id="s2">
+    <div class="section-header">
+      <span class="section-num">02</span>
+      <h2>Fedora Installation & Dual Boot</h2>
+    </div>
+    <div class="section-body">
+
+      <div class="step">
+        <div class="step-title"><span class="dot"></span>Anaconda Installer — Partition Setup</div>
+        <div class="step-body">
+          <p>Use <strong>Custom Partitioning</strong> (Blivet-GUI or manual). Do NOT let the installer auto-configure if Windows is present.</p>
+          <pre><span class="out">  /boot/efi  →  512 MB   EFI  (select existing — DO NOT reformat)
+  /boot      →  1 GB     ext4
+  /          →  60 GB    btrfs  (Fedora default, supports snapshots)
+  /home      →  rest     btrfs
+  swap       →  8–16 GB  (or use zram — modern default)</span></pre>
+          <div class="callout warn">
+            <span class="callout-icon">⚡</span>
+            <div>Select the existing EFI partition and set its mount point to <code>/boot/efi</code> — <strong>do not format it</strong>. This preserves the Windows bootloader.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-title"><span class="dot"></span>Post-Install — Verify GRUB Detects Windows</div>
+        <div class="step-body">
+          <pre><span class="cmd">sudo grub2-mkconfig</span> <span class="arg">-o /boot/grub2/grub.cfg</span>
+<span class="cmd">sudo dnf install</span> <span class="arg">os-prober</span>
+<span class="comment"># Enable os-prober in /etc/default/grub:</span>
+<span class="cmd">echo</span> <span class="arg">'GRUB_DISABLE_OS_PROBER=false'</span> | <span class="cmd">sudo tee</span> <span class="arg">-a /etc/default/grub</span>
+<span class="cmd">sudo grub2-mkconfig</span> <span class="arg">-o /boot/grub2/grub.cfg</span></pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-title"><span class="dot"></span>Initial System Update</div>
+        <div class="step-body">
+          <pre><span class="cmd">sudo dnf upgrade</span> <span class="arg">--refresh -y</span>
+<span class="cmd">sudo dnf install</span> <span class="arg">fedora-workstation-repositories -y</span>
+<span class="cmd">sudo dnf install</span> <span class="arg">@development-tools kernel-devel -y</span></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 3 -->
+  <section class="section" id="s3">
+    <div class="section-header">
+      <span class="section-num">03</span>
+      <h2>Niri Wayland Compositor Setup</h2>
+    </div>
+    <div class="section-body">
+
+      <p>Niri is a scrollable-tiling Wayland compositor — excellent for multitasking across many terminal windows, recon outputs, and browser tabs simultaneously.</p>
+
+      <div class="step">
+        <div class="step-title"><span class="dot"></span>Install Niri & Dependencies</div>
+        <div class="step-body">
+          <pre><span class="comment"># Enable COPR repo for niri</span>
+<span class="cmd">sudo dnf copr enable</span> <span class="arg">yalter/niri -y</span>
+<span class="cmd">sudo dnf install</span> <span class="arg">niri -y</span>
+
+<span class="comment"># Essential Wayland utilities</span>
+<span class="cmd">sudo dnf install</span> <span class="arg">waybar fuzzel foot mako wl-clipboard \
+  xdg-desktop-portal-gnome pipewire wireplumber \
+  polkit-gnome network-manager-applet -y</span>
+
+<span class="comment"># XWayland for legacy X11 apps (Burp, older tools)</span>
+<span class="cmd">sudo dnf install</span> <span class="arg">xorg-x11-server-Xwayland -y</span></pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-title"><span class="dot"></span>Niri Config — Security-Focused Layout</div>
+        <div class="step-body">
+          <pre><span class="cmd">mkdir</span> <span class="arg">-p ~/.config/niri</span>
+<span class="cmd">nano</span> <span class="arg">~/.config/niri/config.kdl</span></pre>
+
+          <div class="config-block"><span class="cfg-comment">// ~/.config/niri/config.kdl — Security Workstation Layout</span>
+
+<span class="cfg-section">input</span> {
+    <span class="cfg-key">keyboard</span> {
+        <span class="cfg-key">xkb</span> { <span class="cfg-key">layout</span> <span class="cfg-val">"us"</span> }
+        <span class="cfg-key">repeat-delay</span> <span class="cfg-val">250</span>
+        <span class="cfg-key">repeat-rate</span> <span class="cfg-val">30</span>
+    }
+    <span class="cfg-key">touchpad</span> { <span class="cfg-key">tap</span> }
+}
+
+<span class="cfg-section">layout</span> {
+    <span class="cfg-key">gaps</span> <span class="cfg-val">8</span>
+    <span class="cfg-key">center-focused-column</span> <span class="cfg-val">"never"</span>
+    <span class="cfg-key">default-column-width</span> { <span class="cfg-key">proportion</span> <span class="cfg-val">0.5</span>; }
+    <span class="cfg-key">focus-ring</span> {
+        <span class="cfg-key">width</span> <span class="cfg-val">2</span>
+        <span class="cfg-key">active-color</span> <span class="cfg-val">"#00e5ff"</span>
+        <span class="cfg-key">inactive-color</span> <span class="cfg-val">"#1e2a36"</span>
+    }
+}
+
+<span class="cfg-section">binds</span> {
+    <span class="cfg-comment">// Launcher, terminal, browser</span>
+    <span class="cfg-key">Mod+Return</span> { <span class="cfg-val">spawn "foot"</span>; }
+    <span class="cfg-key">Mod+D</span>      { <span class="cfg-val">spawn "fuzzel"</span>; }
+    <span class="cfg-key">Mod+B</span>      { <span class="cfg-val">spawn "firefox"</span>; }
+    <span class="cfg-comment">// Layout navigation</span>
+    <span class="cfg-key">Mod+H</span>      { <span class="cfg-val">focus-column-left</span>; }
+    <span class="cfg-key">Mod+L</span>      { <span class="cfg-val">focus-column-right</span>; }
+    <span class="cfg-key">Mod+J</span>      { <span class="cfg-val">focus-window-down</span>; }
+    <span class="cfg-key">Mod+K</span>      { <span class="cfg-val">focus-window-up</span>; }
+    <span class="cfg-key">Mod+Q</span>      { <span class="cfg-val">close-window</span>; }
+    <span class="cfg-key">Mod+F</span>      { <span class="cfg-val">maximize-column</span>; }
+    <span class="cfg-key">Mod+Shift+E</span> { <span class="cfg-val">quit</span>; }
+}</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-title"><span class="dot"></span>Waybar Status Bar for Security Recon</div>
+        <div class="step-body">
+          <pre><span class="cmd">mkdir</span> <span class="arg">-p ~/.config/waybar</span>
+<span class="comment"># In ~/.config/waybar/config.json — add modules:</span>
+<span class="out">"modules-right": ["network", "cpu", "memory", "temperature",
+                   "battery", "clock", "tray"]</span>
+<span class="comment"># Shows live CPU/RAM — essential when running scans/models</span></pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-title"><span class="dot"></span>Set Niri as Login Session</div>
+        <div class="step-body">
+          <pre><span class="comment"># Log out → select "Niri" from SDDM/GDM session dropdown
+# Or start manually from TTY:</span>
+<span class="cmd">niri-session</span></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 4 -->
+  <section class="section" id="s4">
+    <div class="section-header">
+      <span class="section-num">04</span>
+      <h2>Core System Configuration</h2>
+    </div>
+    <div class="section-body">
+
+      <div class="step">
+        <div class="step-title"><span class="dot"></span>Enable RPM Fusion & Flathub</div>
+        <div class="step-body">
+          <pre><span class="cmd">sudo dnf install</span> <span class="arg">https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm</span>
+<span class="cmd">sudo dnf install</span> <span class="arg">https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm</span>
+<span class="cmd">flatpak remote-add</span> <span class="arg">--if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo</span></pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-title"><span class="dot"></span>Kernel Hardening & sysctl</div>
+        <div class="step-body">
+          <pre><span class="cmd">sudo nano</span> <span class="arg">/etc/sysctl.d/99-security.conf</span>
+<span class="comment"># Add:</span>
+<span class="out">net.ipv4.tcp_syncookies = 1
+net.ipv4.conf.all.rp_filter = 1
+net.ipv4.conf.all.accept_redirects = 0
+net.ipv6.conf.all.accept_redirects = 0
+kernel.dmesg_restrict = 1
+kernel.kptr_restrict = 2
+net.ipv4.ip_forward = 0</span>
+<span class="cmd">sudo sysctl</span> <span class="arg">--system</span></pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-title"><span class="dot"></span>Python, Go, Node, Rust Toolchains</div>
+        <div class="step-body">
+          <pre><span class="cmd">sudo dnf install</span> <span class="arg">python3 python3-pip python3-venv golang nodejs npm -y</span>
+<span class="cmd">curl</span> <span class="arg">--proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh</span>
+<span class="comment"># Go path:</span>
+<span class="cmd">echo</span> <span class="arg">'export PATH=$PATH:$(go env GOPATH)/bin'</span> >> ~/.bashrc</pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-title"><span class="dot"></span>Docker & Podman for Isolated Environments</div>
+        <div class="step-body">
+          <pre><span class="cmd">sudo dnf install</span> <span class="arg">podman podman-compose -y</span>
+<span class="comment"># Docker (alternative):</span>
+<span class="cmd">sudo dnf config-manager</span> <span class="arg">--add-repo https://download.docker.com/linux/fedora/docker-ce.repo</span>
+<span class="cmd">sudo dnf install</span> <span class="arg">docker-ce docker-ce-cli containerd.io -y</span>
+<span class="cmd">sudo systemctl enable</span> <span class="arg">--now docker</span>
+<span class="cmd">sudo usermod</span> <span class="arg">-aG docker $USER</span></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 5 -->
+  <section class="section" id="s5">
+    <div class="section-header">
+      <span class="section-num">05</span>
+      <h2>Bug Bounty Toolkit</h2>
+    </div>
+    <div class="section-body">
+
+      <div class="step">
+        <div class="step-title"><span class="dot"></span>Recon & OSINT</div>
+        <div class="step-body">
+          <pre><span class="comment"># Go-based tools (fast, install via go install)</span>
+<span class="cmd">go install</span> <span class="arg">github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest</span>
+<span class="cmd">go install</span> <span class="arg">github.com/projectdiscovery/httpx/cmd/httpx@latest</span>
+<span class="cmd">go install</span> <span class="arg">github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest</span>
+<span class="cmd">go install</span> <span class="arg">github.com/projectdiscovery/katana/cmd/katana@latest</span>
+<span class="cmd">go install</span> <span class="arg">github.com/tomnomnom/waybackurls@latest</span>
+<span class="cmd">go install</span> <span class="arg">github.com/lc/gau/v2/cmd/gau@latest</span>
+<span class="cmd">go install</span> <span class="arg">github.com/tomnomnom/gf@latest</span>
+<span class="cmd">go install</span> <span class="arg">github.com/ffuf/ffuf/v2@latest</span></pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-title"><span class="dot"></span>Network & Web Testing</div>
+        <div class="step-body">
+          <pre><span class="cmd">sudo dnf install</span> <span class="arg">nmap masscan nikto sqlmap whatweb -y</span>
+<span class="comment"># Burp Suite Pro (via browser download or Flatpak):</span>
+<span class="cmd">flatpak install</span> <span class="arg">flathub com.portswigger.BurpSuite -y</span>
+<span class="comment"># Or download JAR from portswigger.net and run:</span>
+<span class="cmd">java</span> <span class="arg">-jar burpsuite_pro.jar</span>
+<span class="comment"># OWASP ZAP:</span>
+<span class="cmd">flatpak install</span> <span class="arg">flathub org.zaproxy.ZAP -y</span></pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-title"><span class="dot"></span>Wordlists & SecLists</div>
+        <div class="step-body">
+          <pre><span class="cmd">sudo dnf install</span> <span class="arg">seclists -y</span>
+<span class="comment"># Or clone directly:</span>
+<span class="cmd">git clone</span> <span class="arg">--depth 1 https://github.com/danielmiessler/SecLists ~/tools/SecLists</span>
+<span class="comment"># CeWL for custom wordlists:</span>
+<span class="cmd">sudo dnf install</span> <span class="arg">cewl -y</span></pre>
+        </div>
+      </div>
+
+      <div class="tool-grid">
+        <div class="tool-card">
+          <div class="tool-name">subfinder</div>
+          <div class="tool-desc">Passive subdomain enumeration via APIs</div>
+          <span class="tool-tag tag-recon">recon</span>
+        </div>
+        <div class="tool-card">
+          <div class="tool-name">nuclei</div>
+          <div class="tool-desc">Template-based vulnerability scanner</div>
+          <span class="tool-tag tag-bounty">bug bounty</span>
+        </div>
+        <div class="tool-card">
+          <div class="tool-name">httpx</div>
+          <div class="tool-desc">Fast HTTP probing & fingerprinting</div>
+          <span class="tool-tag tag-recon">recon</span>
+        </div>
+        <div class="tool-card">
+          <div class="tool-name">ffuf</div>
+          <div class="tool-desc">Web fuzzing — dirs, params, vhosts</div>
+          <span class="tool-tag tag-bounty">bug bounty</span>
+        </div>
+        <div class="tool-card">
+          <div class="tool-name">sqlmap</div>
+          <div class="tool-desc">Automated SQL injection detection</div>
+          <span class="tool-tag tag-exploit">exploit</span>
+        </div>
+        <div class="tool-card">
+          <div class="tool-name">katana</div>
+          <div class="tool-desc">JS-aware web crawler / spider</div>
+          <span class="tool-tag tag-recon">recon</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 6 -->
+  <section class="section" id="s6">
+    <div class="section-header">
+      <span class="section-num">06</span>
+      <h2>AI Security Tools</h2>
+    </div>
+    <div class="section-body">
+
+      <div class="step">
+        <div class="step-title"><span class="dot"></span>Local LLM Setup — Ollama</div>
+        <div class="step-body">
+          <pre><span class="comment"># Install Ollama (runs models locally — great for offline analysis)</span>
+<span class="cmd">curl</span> <span class="arg">-fsSL https://ollama.ai/install.sh | sh</span>
+<span class="cmd">ollama pull</span> <span class="arg">llama3</span>          <span class="comment"># General purpose</span>
+<span class="cmd">ollama pull</span> <span class="arg">codellama</span>       <span class="comment"># Code/exploit analysis</span>
+<span class="cmd">ollama pull</span> <span class="arg">mistral</span>         <span class="comment"># Fast, lightweight</span>
+<span class="comment"># Run as a local API server:</span>
+<span class="cmd">ollama serve</span>                  <span class="comment"># Listens on localhost:11434</span></pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-title"><span class="dot"></span>AI-Powered Security Research</div>
+        <div class="step-body">
+          <pre><span class="comment"># PentestGPT — AI-guided pentest assistant</span>
+<span class="cmd">pip install</span> <span class="arg">pentestgpt</span>
+
+<span class="comment"># Fabric — AI pattern-based security workflows</span>
+<span class="cmd">go install</span> <span class="arg">github.com/danielmiessler/fabric@latest</span>
+<span class="comment"># Use Fabric for analyzing CVEs, recon data, report writing:</span>
+<span class="cmd">fabric</span> <span class="arg">-p analyze_threat_report < report.txt</span>
+
+<span class="comment"># AI code vulnerability scanning:</span>
+<span class="cmd">pip install</span> <span class="arg">semgrep</span>
+<span class="cmd">semgrep</span> <span class="arg">--config=auto ./target-source/</span></pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-title"><span class="dot"></span>ML/AI Security Research Environment</div>
+        <div class="step-body">
+          <pre><span class="comment"># Python ML stack for adversarial ML / model security</span>
+<span class="cmd">python3</span> <span class="arg">-m venv ~/venvs/ai-security</span>
+<span class="cmd">source</span> <span class="arg">~/venvs/ai-security/bin/activate</span>
+<span class="cmd">pip install</span> <span class="arg">torch torchvision transformers datasets \
+            adversarial-robustness-toolbox \
+            foolbox cleverhans \
+            langchain anthropic openai</span>
+
+<span class="comment"># JupyterLab for research notebooks:</span>
+<span class="cmd">pip install</span> <span class="arg">jupyterlab</span>
+<span class="cmd">jupyter lab</span> <span class="arg">--no-browser</span></pre>
+        </div>
+      </div>
+
+      <div class="tool-grid">
+        <div class="tool-card">
+          <div class="tool-name">ART (IBM)</div>
+          <div class="tool-desc">Adversarial Robustness Toolbox — attack & defense ML models</div>
+          <span class="tool-tag tag-ai">AI security</span>
+        </div>
+        <div class="tool-card">
+          <div class="tool-name">Foolbox</div>
+          <div class="tool-desc">Adversarial attacks on neural networks</div>
+          <span class="tool-tag tag-ai">AI security</span>
+        </div>
+        <div class="tool-card">
+          <div class="tool-name">Semgrep</div>
+          <div class="tool-desc">Static code analysis with AI patterns</div>
+          <span class="tool-tag tag-ai">AI security</span>
+        </div>
+        <div class="tool-card">
+          <div class="tool-name">Ollama</div>
+          <div class="tool-desc">Local LLM inference — air-gapped analysis</div>
+          <span class="tool-tag tag-ai">AI security</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 7 -->
+  <section class="section" id="s7">
+    <div class="section-header">
+      <span class="section-num">07</span>
+      <h2>Blockchain Security Research</h2>
+    </div>
+    <div class="section-body">
+
+      <div class="step">
+        <div class="step-title"><span class="dot"></span>Smart Contract Auditing Tools</div>
+        <div class="step-body">
+          <pre><span class="comment"># Foundry — Ethereum dev & testing framework</span>
+<span class="cmd">curl</span> <span class="arg">-L https://foundry.paradigm.xyz | bash</span>
+<span class="cmd">foundryup</span>
+<span class="comment"># Includes: forge (test), cast (interact), anvil (local chain)</span>
+
+<span class="comment"># Slither — static analysis for Solidity</span>
+<span class="cmd">pip install</span> <span class="arg">slither-analyzer</span>
+<span class="cmd">slither</span> <span class="arg">./contracts/</span>
+
+<span class="comment"># Mythril — symbolic execution / vulnerability detection</span>
+<span class="cmd">pip install</span> <span class="arg">mythril</span>
+<span class="cmd">myth</span> <span class="arg">analyze contracts/Token.sol</span>
+
+<span class="comment"># Echidna — smart contract fuzzer (via Docker)</span>
+<span class="cmd">docker pull</span> <span class="arg">trailofbits/echidna</span></pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-title"><span class="dot"></span>Blockchain Node & Interaction Tools</div>
+        <div class="step-body">
+          <pre><span class="comment"># Node.js blockchain libraries</span>
+<span class="cmd">npm install</span> <span class="arg">-g hardhat ethers@6 web3</span>
+
+<span class="comment"># Python blockchain research</span>
+<span class="cmd">pip install</span> <span class="arg">web3 eth-abi brownie</span>
+
+<span class="comment"># Ganache local EVM (via npm)</span>
+<span class="cmd">npm install</span> <span class="arg">-g ganache</span>
+
+<span class="comment"># Block explorer / chain analysis</span>
+<span class="cmd">pip install</span> <span class="arg">ethereum-etl</span></pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-title"><span class="dot"></span>DeFi Bug Bounty Setup</div>
+        <div class="step-body">
+          <pre><span class="comment"># Immunefi CLI (leading DeFi bug bounty platform)</span>
+<span class="cmd">npm install</span> <span class="arg">-g @immunefi/cli</span>
+
+<span class="comment"># Tenderly — tx simulation & debugging (web-based + CLI)</span>
+<span class="cmd">npm install</span> <span class="arg">-g @tenderly/cli</span>
+<span class="cmd">tenderly login</span>
+
+<span class="comment"># Quick PoC flash loan attack scaffold (Foundry):</span>
+<span class="cmd">forge init</span> <span class="arg">exploit-template</span>
+<span class="cmd">forge test</span> <span class="arg">-vvvv --fork-url https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY</span></pre>
+        </div>
+      </div>
+
+      <div class="tool-grid">
+        <div class="tool-card">
+          <div class="tool-name">Slither</div>
+          <div class="tool-desc">Solidity static analyzer — finds reentrancy, overflows, access control bugs</div>
+          <span class="tool-tag tag-blockchain">blockchain</span>
+        </div>
+        <div class="tool-card">
+          <div class="tool-name">Foundry</div>
+          <div class="tool-desc">Fast EVM toolkit — forge test, cast calls, anvil local fork</div>
+          <span class="tool-tag tag-blockchain">blockchain</span>
+        </div>
+        <div class="tool-card">
+          <div class="tool-name">Mythril</div>
+          <div class="tool-desc">Symbolic execution — detects integer bugs, selfdestruct, delegatecall</div>
+          <span class="tool-tag tag-blockchain">blockchain</span>
+        </div>
+        <div class="tool-card">
+          <div class="tool-name">Echidna</div>
+          <div class="tool-desc">Property-based fuzzer for EVM contracts</div>
+          <span class="tool-tag tag-blockchain">blockchain</span>
+        </div>
+        <div class="tool-card">
+          <div class="tool-name">Hardhat</div>
+          <div class="tool-desc">EVM dev framework with plugin ecosystem</div>
+          <span class="tool-tag tag-blockchain">blockchain</span>
+        </div>
+        <div class="tool-card">
+          <div class="tool-name">Immunefi</div>
+          <div class="tool-desc">Leading DeFi/Web3 bug bounty platform</div>
+          <span class="tool-tag tag-bounty">bug bounty</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 8 -->
+  <section class="section" id="s8">
+    <div class="section-header">
+      <span class="section-num">08</span>
+      <h2>Privacy, OPSEC & Network Security</h2>
+    </div>
+    <div class="section-body">
+
+      <div class="step">
+        <div class="step-title"><span class="dot"></span>VPN & Traffic Isolation</div>
+        <div class="step-body">
+          <pre><span class="comment"># WireGuard (modern, fast VPN)</span>
+<span class="cmd">sudo dnf install</span> <span class="arg">wireguard-tools -y</span>
+<span class="comment"># Or Mullvad / ProtonVPN with native clients:
+# https://mullvad.net/download/vpn/linux</span>
+
+<span class="comment"># OpenVPN (for older corporate/HTB/THM labs)</span>
+<span class="cmd">sudo dnf install</span> <span class="arg">openvpn network-manager-openvpn-gnome -y</span></pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-title"><span class="dot"></span>Firewall with nftables</div>
+        <div class="step-body">
+          <pre><span class="comment"># Fedora uses firewalld (nftables backend)</span>
+<span class="cmd">sudo systemctl enable</span> <span class="arg">--now firewalld</span>
+<span class="cmd">sudo firewall-cmd</span> <span class="arg">--set-default-zone=drop</span>
+<span class="cmd">sudo firewall-cmd</span> <span class="arg">--permanent --add-service=ssh</span>
+<span class="cmd">sudo firewall-cmd</span> <span class="arg">--reload</span>
+<span class="comment"># GUI management:</span>
+<span class="cmd">sudo dnf install</span> <span class="arg">firewall-config -y</span></pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-title"><span class="dot"></span>Tor, Browser Isolation & Password Management</div>
+        <div class="step-body">
+          <pre><span class="cmd">sudo dnf install</span> <span class="arg">tor torbrowser-launcher -y</span>
+<span class="cmd">sudo systemctl enable</span> <span class="arg">--now tor</span>
+
+<span class="comment"># Bitwarden — FOSS password manager</span>
+<span class="cmd">flatpak install</span> <span class="arg">flathub com.bitwarden.desktop -y</span>
+
+<span class="comment"># Firejail for sandboxing tools</span>
+<span class="cmd">sudo dnf install</span> <span class="arg">firejail -y</span>
+<span class="cmd">firejail</span> <span class="arg">--net=none burpsuite</span></pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-title"><span class="dot"></span>SELinux (Fedora Default — Keep Enabled)</div>
+        <div class="step-body">
+          <pre><span class="comment"># Fedora ships with SELinux enforcing — do NOT disable it.
+# Check status:</span>
+<span class="cmd">getenforce</span>
+<span class="out">Enforcing</span>
+<span class="comment"># Audit denials (useful for debugging tool issues):</span>
+<span class="cmd">sudo ausearch</span> <span class="arg">-m avc -ts recent | audit2why</span></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 9 -->
+  <section class="section" id="s9">
+    <div class="section-header">
+      <span class="section-num">09</span>
+      <h2>Niri Keybinds Reference</h2>
+    </div>
+    <div class="section-body">
+
+      <div class="tool-grid">
+        <div class="tool-card">
+          <div class="tool-name">Mod + Return</div>
+          <div class="tool-desc">Open terminal (foot)</div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-name">Mod + D</div>
+          <div class="tool-desc">App launcher (fuzzel)</div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-name">Mod + H / L</div>
+          <div class="tool-desc">Focus column left / right</div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-name">Mod + J / K</div>
+          <div class="tool-desc">Focus window up / down in column</div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-name">Mod + F</div>
+          <div class="tool-desc">Maximize column width</div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-name">Mod + Q</div>
+          <div class="tool-desc">Close focused window</div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-name">Mod + Shift + H/L</div>
+          <div class="tool-desc">Move column left / right</div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-name">Mod + Shift + E</div>
+          <div class="tool-desc">Quit niri session</div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-name">Mod + B</div>
+          <div class="tool-desc">Open Firefox browser</div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-name">Mod + Mouse Scroll</div>
+          <div class="tool-desc">Scroll through workspace columns</div>
+        </div>
+      </div>
+
+      <div class="callout success">
+        <span class="callout-icon">✓</span>
+        <div><strong>Tip:</strong> Niri's scrollable-tiling model is ideal for recon pipelines — open terminal, Burp, browser, and notes side by side and scroll horizontally between them with <code>Mod + H/L</code>.</div>
+      </div>
+
+      <hr class="divider">
+
+      <div class="callout info">
+        <span class="callout-icon">📚</span>
+        <div><strong>Recommended bug bounty platforms:</strong> HackerOne, Bugcrowd, Intigriti, Immunefi (Web3), YesWeHack. Start with public programs before private invites. Always read the scope carefully.</div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>FEDORA + NIRI</span> · Bug Bounty &amp; Cybersecurity Workstation Setup<br>
+    Generated for research and authorized security testing purposes only
+  </footer>
+
+</div>
+</body>
+</html>
